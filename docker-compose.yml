@@ -1,0 +1,24 @@
+createdbs:
+  image: postgres:9.3
+  links:
+    - db
+  command: >
+    /bin/bash -c "
+      while ! psql --host=db --username=postgres; do sleep 1; done;
+      psql --host=db --username=postgres -c 'CREATE DATABASE \"express-kvstore\";';
+    "
+
+dropdbs:
+  image: postgres:9.3
+  links:
+    - db
+  command: >
+    /bin/bash -c "
+      while ! psql --host=db --username=postgres; do sleep 1; done;
+      psql --host=db --username=postgres -c 'DROP DATABASE \"express-kvstore\";';
+    "
+
+db:
+  image: postgres:9.3
+  ports:
+    - "5432:5432"

@@ -56,8 +56,28 @@ export default ({
   })
   .use(bodyParser.json())
   .use((req, res, next) => {
-    const key = req.kvstoreKey || req.path;
+    if (!req.kvstoreChroot) return next();
+    const key = req.kvstoreChroot;
+    // Ensure root is a dir and exists
+    // TODO: not really necessary? just return
+    // empty node on get(root) ?
+    return Kvnode.root(key)
+      .save(null, { method: 'insert' })
+      .catch(() => {
+        // ignore duplicate key error
+      })
+      .then(() => {
+        next();
+      });
+  })
+  .use((req, res, next) => {
+    const chroot = req.kvstoreChroot;
+    let key = req.path;
+    if (chroot) {
+      key = chroot + (key === '/' ? '' : key);
+    }
     req.kvnode = Kvnode.forge({ key });
+    req.kvnode.chroot = chroot;
     next();
   })
   .get('*', (req, res, next) => {
@@ -65,7 +85,9 @@ export default ({
       withRelated: [ 'nodes' ],
     })
     .then((kvnode) => {
-      if (!kvnode) throw new createError.NotFound();
+      if (!kvnode) {
+        throw new createError.NotFound(req.kvnode.get('key'));
+      }
       res.json(kvnode);
     })
     .catch(next);

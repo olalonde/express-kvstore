@@ -26,6 +26,12 @@ test('kvstore', (t) => {
     const kvstore = initKvstore({ knex });
 
     const app = express();
+    if (process.env.KVSTORE_CHROOT) {
+      app.use((req, res, next) => {
+        req.kvstoreChroot = process.env.KVSTORE_CHROOT;
+        next();
+      });
+    }
     app.use('/keys', kvstore);
     const server = http.createServer(app).listen();
     const port = server.address().port;

@@ -7,7 +7,7 @@
     "build": "babel ./src --out-dir ./lib --copy-files",
     "clean": "rimraf ./lib",
     "pretest": "npm run lint",
-    "test:unit": "babel-node test/*.js",
+    "test:unit": "babel-node test/normal.js && babel-node test/chroot.js",
     "test": "npm run test:unit",
     "preversion": "npm test",
     "version:auto": "npm version $(conventional-recommended-bump --preset=angular)",

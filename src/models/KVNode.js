@@ -64,12 +64,15 @@ export default ({ bookshelf }) => {
       } else {
         delete attrs.nodes;
       }
+      if (this.chroot) {
+        attrs.key = attrs.key.substr(this.chroot.length) || '/';
+      }
       return attrs;
     }
 
-    static root() {
+    static root(key = '/') {
       return Kvnode.forge({
-        key: '/',
+        key,
         parent: null,
         dir: true,
       });

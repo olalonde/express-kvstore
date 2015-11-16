@@ -50,7 +50,7 @@
       "path": "node_modules/cz-conventional-changelog/"
     }
   },
-  "version": "0.2.2",
+  "version": "0.2.3",
   "directories": {
     "test": "test"
   }

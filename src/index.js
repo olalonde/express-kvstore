@@ -56,7 +56,8 @@ export default ({
   })
   .use(bodyParser.json())
   .use((req, res, next) => {
-    req.kvnode = Kvnode.forge({ key: req.path });
+    const key = req.kvstoreKey || req.path;
+    req.kvnode = Kvnode.forge({ key });
     next();
   })
   .get('*', (req, res, next) => {

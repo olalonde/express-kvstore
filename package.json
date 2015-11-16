@@ -14,7 +14,8 @@
     "postversion": "git push --tags && git push",
     "release": "npm run version:auto && npm publish",
     "prepublish": "npm run build",
-    "docker:db": "npm run docker:createdbs && docker-compose up -d db"
+    "docker:createdbs": "docker-compose up createdbs",
+    "docker": "npm run docker:createdbs && docker-compose up -d db"
   },
   "keywords": [
     "express",

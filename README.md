@@ -27,6 +27,6 @@ app.use('/keys', initKvstore({ knex }));
 ## Test
 
 ```
-# npm run docker:db
+# npm run docker
 npm test
 ```

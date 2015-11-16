@@ -44,7 +44,7 @@
     "pg": "^4.4.3",
     "rimraf": "^2.4.3"
   },
-  "version": "0.0.1",
+  "version": "0.0.2",
   "directories": {
     "test": "test"
   }

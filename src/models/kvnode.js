@@ -1,4 +1,4 @@
-import path from 'path';
+const DEBUG = process.env.EXPRESS_KVSTORE_DEBUG;
 
 const basename = (str) => {
   const parts = str.split('/');
@@ -6,6 +6,29 @@ const basename = (str) => {
 };
 
 export default ({ bookshelf }) => {
+  class Key {
+    constructor(_key, chroot) {
+      const key = _key.split('/').filter((part) => part !== '');
+      this.key = chroot ? (new Key(chroot)).key.concat(key) : key;
+    }
+
+    parent() {
+      if (!this.key.length) return undefined;
+      return new Key(this.key.slice(0, -1).join('/'));
+    }
+
+    basename() {
+      if (!this.key.length) return undefined;
+      return this.key[this.key.length - 1];
+    }
+
+    toString(_chroot = '/') {
+      const chroot = new Key(_chroot);
+      const key = this.key.slice(chroot.key.length);
+      return '/' + key.join('/');
+    }
+  }
+
   class Kvnode extends bookshelf.Model {
     get idAttribute() { return 'key'; }
     get tableName() { return 'kvnodes'; }
@@ -16,20 +39,29 @@ export default ({ bookshelf }) => {
       return this.hasMany(Kvnode, 'parent');
     }
 
+    key() {
+      return new Key(this.get('key'));
+    }
+
+    parse(attrs) {
+      return attrs;
+    }
+
+    format(attrs) {
+      return attrs;
+    }
+
     isDir() {
       return this.get('dir');
     }
 
-    _parentKey() {
-      const parts = this.get('key').split('/')
-        .filter((ele) => ele !== '');
-      if (!parts.length) return null;
-      parts.pop();
-      return '/' + parts.join('/');
-    }
-
     _createParent({ transacting }) {
-      return Kvnode.forge({ key: this._parentKey(), dir: true }).put({ transacting });
+      const parentKey = this.key().parent();
+      if (!parentKey) return Promise.resolve();
+      return Kvnode.forge({
+        key: parentKey.toString(),
+        dir: true,
+      }).put({ transacting });
     }
 
     put({ transacting } = {}) {
@@ -37,19 +69,24 @@ export default ({ bookshelf }) => {
         return bookshelf.transaction((t) => this.put({ transacting: t }));
       }
 
-      this.set('parent', this._parentKey());
-      return Kvnode.forge({ key: this.get('key') })
+      this.set('key', this.key().toString());
+
+      const parentKey = this.key().parent();
+      if (parentKey) {
+        this.set('parent', parentKey.toString());
+      }
+      return Kvnode.forge({ key: this.key().toString() })
       .fetch({ transacting })
       .then((kvnode) => {
         if (kvnode) {
           if (kvnode.get('dir') !== this.get('dir')) {
             throw new Error(`${this.get('key')}: cannot change dir=${kvnode.get('dir')} to ${this.get('dir')}`);
           }
-          return this.save(null, { transacting, method: 'update' });
+          return this.save(null, { debug: DEBUG, transacting, method: 'update' });
         }
         return this._createParent({ transacting })
           .then(() => {
-            return this.save(null, { transacting, method: 'insert' });
+            return this.save(null, { debug: DEBUG, transacting, method: 'insert' });
           });
       });
     }
@@ -66,9 +103,7 @@ export default ({ bookshelf }) => {
       } else {
         delete attrs.nodes;
       }
-      if (this.chroot) {
-        attrs.key = path.join('/', attrs.key.substr(this.chroot.length));
-      }
+      attrs.key = this.key().toString(this.chroot);
       return attrs;
     }
 
@@ -78,6 +113,14 @@ export default ({ bookshelf }) => {
         parent: null,
         dir: true,
       });
+    }
+
+    static init({ key: _key, chroot = '/' }) {
+      const key = new Key(_key, chroot);
+      const kvnode = new Kvnode();
+      kvnode.set('key', key.toString());
+      kvnode.chroot = chroot;
+      return kvnode;
     }
   }
   return Kvnode;

@@ -5,14 +5,7 @@ import initKvnode from './models/kvnode';
 import createError from 'http-errors';
 import bodyParser from 'body-parser';
 
-const normalize = (str) => {
-  // trim / on the right
-  let tail = str.length;
-  while (/\//.test(str[tail - 1])) {
-    tail--;
-  }
-  return str.slice(0, tail);
-};
+const DEBUG = process.env.EXPRESS_KVSTORE_DEBUG;
 
 export default ({
   knex,
@@ -67,28 +60,21 @@ export default ({
   .use((req, res, next) => {
     if (!req.kvstoreChroot) return next();
     const key = req.kvstoreChroot;
-    // Ensure root is a dir and exists
-    // TODO: not really necessary? just return
-    // empty node on get(root) ?
-    return Kvnode.root(key)
-    .save(null, { method: 'insert' })
-    .catch(() => {
-      // ignore duplicate key error
-    })
-    .then(() => {
-      next();
-    });
+    const kvnode = Kvnode.init({ key });
+    kvnode.set('dir', true);
+    kvnode.put().then(() => next()).catch(next);
   })
   .use((req, res, next) => {
-    const chroot = req.kvstoreChroot || '/';
-    const key = normalize(path.join(chroot, req.path)) || '/';
-    req.kvnode = Kvnode.forge({ key });
-    req.kvnode.chroot = chroot;
+    req.kvnode = Kvnode.init({
+      key: req.path,
+      chroot: req.kvstoreChroot,
+    });
     next();
   })
   .get('*', (req, res, next) => {
     req.kvnode.fetch({
       withRelated: [ 'nodes' ],
+      debug: DEBUG,
     })
     .then((kvnode) => {
       if (!kvnode) {

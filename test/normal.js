@@ -10,7 +10,7 @@ const knex = initKnex({
   connection: process.env.PG_CONNECTION_STRING || {
     user: 'postgres',
     password: '',
-    database: 'express-kvstore',
+    database: process.env.PG_DATABASE || 'express-kvstore',
     host: '192.168.99.100',
   },
 });
@@ -33,6 +33,14 @@ test('kvstore', (t) => {
       });
     }
     app.use('/keys', kvstore);
+    app.use((err, req, res, next) => {
+      if (err.expose) {
+        res.status(err.statusCode);
+        res.json({ err: err.message });
+        return;
+      }
+      next(err);
+    });
     const server = http.createServer(app).listen();
     const port = server.address().port;
 
@@ -94,11 +102,27 @@ test('kvstore', (t) => {
     t.equal(value, 'hello world!', 'node.value');
   })
   .then(() => {
-    t.comment('GET /');
-    return fetch(u('/')).then((r) => r.json());
+    return fetch(u('/message//'), {
+      method: 'put',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        value: 'wow!',
+      }),
+    });
   })
-  .then((node) => {
-    t.deepEqual(node.nodes, [ '/message' ], '.nodes contains /message');
+  .then(() => {
+    t.comment('GET /');
+    return fetch(u('/')).then((r) => r.json()).then((node) => {
+      t.deepEqual(node.nodes, [ '/message' ], '.nodes contains /message');
+    });
+  })
+  .then(() => {
+    t.comment('GET /message');
+    return fetch(u('/message')).then((r) => r.json()).then((node) => {
+      t.deepEqual(node.value, 'wow!', 'node.value === wow!');
+    });
   })
   .then(() => {
     t.comment('DELETE /message');
@@ -148,8 +172,8 @@ test('kvstore', (t) => {
   .then(() => {
     return fetch(u('/config')).then((r) => r.json())
     .then(({ dir, nodes }) => {
-      t.equal(dir, true);
-      t.deepEqual(nodes, [ '/server' ]);
+      t.equal(dir, true, '/config is dir');
+      t.deepEqual(nodes, [ '/server' ], '/config nodes = [ /server ]');
     });
   })
   .then(() => {

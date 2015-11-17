@@ -5,6 +5,15 @@ import initKvnode from './models/kvnode';
 import createError from 'http-errors';
 import bodyParser from 'body-parser';
 
+const normalize = (str) => {
+  // trim / on the right
+  let tail = str.length;
+  while (/\//.test(str[tail - 1])) {
+    tail--;
+  }
+  return str.slice(0, tail);
+};
+
 export default ({
   knex,
   migrationsTable = 'kvstore_migrations',
@@ -28,10 +37,10 @@ export default ({
   .then(() => {
     // Make sure root node exists
     return Kvnode.root()
-      .save(null, { method: 'insert' })
-      .catch(() => {
-        // ignore duplicate key error
-      });
+    .save(null, { method: 'insert' })
+    .catch(() => {
+      // ignore duplicate key error
+    });
   })
   .then(() => isDatabaseReady = true)
   .catch((err) => {
@@ -62,20 +71,17 @@ export default ({
     // TODO: not really necessary? just return
     // empty node on get(root) ?
     return Kvnode.root(key)
-      .save(null, { method: 'insert' })
-      .catch(() => {
-        // ignore duplicate key error
-      })
-      .then(() => {
-        next();
-      });
+    .save(null, { method: 'insert' })
+    .catch(() => {
+      // ignore duplicate key error
+    })
+    .then(() => {
+      next();
+    });
   })
   .use((req, res, next) => {
-    const chroot = req.kvstoreChroot;
-    let key = req.path;
-    if (chroot) {
-      key = chroot + (key === '/' ? '' : key);
-    }
+    const chroot = req.kvstoreChroot || '/';
+    const key = normalize(path.join(chroot, req.path)) || '/';
     req.kvnode = Kvnode.forge({ key });
     req.kvnode.chroot = chroot;
     next();
@@ -105,11 +111,11 @@ export default ({
   .delete('*', (req, res, next) => {
     const kvnode = req.kvnode;
     return kvnode
-      .destroy()
-      .then(() => {
-        res.json({ ok: true });
-      })
-      .catch(next);
+    .destroy()
+    .then(() => {
+      res.json({ ok: true });
+    })
+    .catch(next);
   });
 
   return router;

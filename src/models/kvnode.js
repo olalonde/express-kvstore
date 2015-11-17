@@ -1,3 +1,5 @@
+import path from 'path';
+
 const basename = (str) => {
   const parts = str.split('/');
   return '/' + parts.pop();
@@ -65,7 +67,7 @@ export default ({ bookshelf }) => {
         delete attrs.nodes;
       }
       if (this.chroot) {
-        attrs.key = attrs.key.substr(this.chroot.length) || '/';
+        attrs.key = path.join('/', attrs.key.substr(this.chroot.length));
       }
       return attrs;
     }

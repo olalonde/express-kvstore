@@ -1,5 +1,7 @@
 # express-kvstore
 
+[![Build Status](https://travis-ci.org/olalonde/express-kvstore.svg?branch=master)](https://travis-ci.org/olalonde/express-kvstore)
+
 Express middleware that provides a PostgreSQL backed key-value store
 REST API.
 
@@ -23,6 +25,10 @@ const knex = initKnex({
 
 app.use('/keys', initKvstore({ knex }));
 ```
+
+## API
+
+See [./test/normal.js](./test/normal.js).
 
 ## Test
 
